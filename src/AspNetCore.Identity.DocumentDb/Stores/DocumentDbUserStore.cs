@@ -5,11 +5,11 @@ using System.Linq;
 using System.Threading.Tasks;
 using System.Threading;
 using System.Security.Claims;
-using Microsoft.Azure.Documents.Client;
 using Microsoft.Extensions.Options;
-using Microsoft.Azure.Documents;
 using System.Net;
 using AspNetCore.Identity.DocumentDb.Tools;
+using Microsoft.Azure.Cosmos;
+using Microsoft.Azure.Cosmos.Linq;
 
 namespace AspNetCore.Identity.DocumentDb.Stores
 {
@@ -26,8 +26,8 @@ namespace AspNetCore.Identity.DocumentDb.Stores
         /// <param name="documentClient">The DocumentDb client to be used</param>
         /// <param name="options">The configuraiton options for the <see cref="IDocumentClient"/></param>
         /// <param name="roleStore">The <see cref="IRoleStore{TRole}"/> to be used for storing and retrieving roles for the user</param>
-        public DocumentDbUserStore(IDocumentClient documentClient, IOptions<DocumentDbOptions> options, IRoleStore<DocumentDbIdentityRole> roleStore)
-            : base(documentClient, options, roleStore)
+        public DocumentDbUserStore(ICosmosClientAccessor clientAccessor, IOptions<DocumentDbOptions> options, IRoleStore<DocumentDbIdentityRole> roleStore)
+            : base(clientAccessor, options, roleStore)
         {
         }
     }
@@ -48,15 +48,13 @@ namespace AspNetCore.Identity.DocumentDb.Stores
         IUserTwoFactorStore<TUser>,
         IUserPhoneNumberStore<TUser>,
         IUserEmailStore<TUser>,
-#if NETSTANDARD2
         IUserAuthenticatorKeyStore<TUser>,
         IUserTwoFactorRecoveryCodeStore<TUser>,
-#endif
         IUserLockoutStore<TUser>
         where TUser : DocumentDbIdentityUser<TRole>
         where TRole : DocumentDbIdentityRole
     {
-        private IRoleStore<TRole> roleStore;
+        private readonly IRoleStore<TRole> roleStore;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="DocumentDbUserStore{TUser, TRole}"/>
@@ -64,8 +62,8 @@ namespace AspNetCore.Identity.DocumentDb.Stores
         /// <param name="documentClient">The DocumentDb client to be used</param>
         /// <param name="options">The configuraiton options for the <see cref="IDocumentClient"/></param>
         /// <param name="roleStore">The <see cref="IRoleStore{TRole}"/> to be used for storing and retrieving roles for the user</param>
-        public DocumentDbUserStore(IDocumentClient documentClient, IOptions<DocumentDbOptions> options, IRoleStore<TRole> roleStore)
-            : base(documentClient, options, options.Value.UserStoreDocumentCollection)
+        public DocumentDbUserStore(ICosmosClientAccessor clientAccessor, IOptions<DocumentDbOptions> options, IRoleStore<TRole> roleStore)
+            : base(clientAccessor, options, options.Value.UserStoreDocumentCollection)
         {
             this.roleStore = roleStore;
         }
@@ -86,7 +84,7 @@ namespace AspNetCore.Identity.DocumentDb.Stores
                 user.Id = Guid.NewGuid().ToString();
             }
 
-            ResourceResponse<Document> result = await container.CreateDocumentAsync(collectionUri, user);
+            ItemResponse<TUser> result = await container.CreateItemAsync(user);
 
             return result.StatusCode == HttpStatusCode.Created
                 ? IdentityResult.Success
@@ -105,16 +103,11 @@ namespace AspNetCore.Identity.DocumentDb.Stores
 
             try
             {
-                await container.DeleteDocumentAsync(GenerateDocumentUri(user.Id));
+                await container.DeleteItemAsync<TUser>(user.Id, PartitionKey.None);
             }
-            catch (DocumentClientException dce)
+            catch (CosmosException cex) when (cex.StatusCode == HttpStatusCode.NotFound)
             {
-                if (dce.StatusCode == HttpStatusCode.NotFound)
-                {
-                    return IdentityResult.Failed();
-                }
-
-                throw;
+                return IdentityResult.Failed();
             }
 
             return IdentityResult.Success;
@@ -130,7 +123,7 @@ namespace AspNetCore.Identity.DocumentDb.Stores
                 throw new ArgumentNullException(nameof(userId));
             }
 
-            TUser foundUser = await container.ReadDocumentAsync<TUser>(GenerateDocumentUri(userId));
+            TUser foundUser = await container.ReadItemAsync<TUser>(userId, PartitionKey.None);
 
             return foundUser;
         }
@@ -145,12 +138,11 @@ namespace AspNetCore.Identity.DocumentDb.Stores
                 throw new ArgumentNullException(nameof(normalizedUserName));
             }
 
-            TUser foundUser = container.CreateDocumentQuery<TUser>(collectionUri, new FeedOptions { EnableCrossPartitionQuery = true })
+            TUser user = container.GetItemLinqQueryable<TUser>(allowSynchronousQueryExecution: true)
                 .Where(u => u.NormalizedUserName == normalizedUserName && u.DocumentType == typeof(TUser).Name)
-                .AsEnumerable()
+                .ToList()
                 .FirstOrDefault();
-
-            return Task.FromResult(foundUser);
+            return Task.FromResult(user);
         }
 
         public Task<string> GetNormalizedUserNameAsync(TUser user, CancellationToken cancellationToken)
@@ -202,12 +194,7 @@ namespace AspNetCore.Identity.DocumentDb.Stores
                 throw new ArgumentNullException(nameof(user));
             }
 
-            if (normalizedName == null)
-            {
-                throw new ArgumentNullException(nameof(normalizedName));
-            }
-
-            user.NormalizedUserName = normalizedName;
+            user.NormalizedUserName = normalizedName ?? throw new ArgumentNullException(nameof(normalizedName));
 
             return Task.CompletedTask;
         }
@@ -222,12 +209,7 @@ namespace AspNetCore.Identity.DocumentDb.Stores
                 throw new ArgumentNullException(nameof(user));
             }
 
-            if (userName == null)
-            {
-                throw new ArgumentNullException(nameof(userName));
-            }
-
-            user.UserName = userName;
+            user.UserName = userName ?? throw new ArgumentNullException(nameof(userName));
 
             return Task.CompletedTask;
         }
@@ -244,16 +226,11 @@ namespace AspNetCore.Identity.DocumentDb.Stores
 
             try
             {
-                await container.ReplaceDocumentAsync(GenerateDocumentUri(user.Id), document: user);
+                await container.ReplaceItemAsync(user, user.Id);
             }
-            catch (DocumentClientException dce)
+            catch (CosmosException cex) when (cex.StatusCode == HttpStatusCode.NotFound)
             {
-                if (dce.StatusCode == HttpStatusCode.NotFound)
-                {
-                    return IdentityResult.Failed();
-                }
-
-                throw;
+                return IdentityResult.Failed();
             }
 
             return IdentityResult.Success;
@@ -339,7 +316,7 @@ namespace AspNetCore.Identity.DocumentDb.Stores
                 throw new ArgumentNullException(nameof(claims));
             }
 
-            IEnumerable<Claim> foundClaims = user.Claims.Where(c => claims.Any(rc => rc.Type == c.Type && rc.Value ==c.Value)).ToList();
+            IEnumerable<Claim> foundClaims = user.Claims.Where(c => claims.Any(rc => rc.Type == c.Type && rc.Value == c.Value)).ToList();
 
             foreach (Claim claimToRemove in foundClaims)
             {
@@ -359,13 +336,12 @@ namespace AspNetCore.Identity.DocumentDb.Stores
                 throw new ArgumentNullException(nameof(claim));
             }
 
-            var result = container.CreateDocumentQuery<TUser>(collectionUri)
+            IList<TUser> results = container.GetItemLinqQueryable<TUser>(allowSynchronousQueryExecution: true)
                 .SelectMany(u => u.Claims
                     .Where(c => c.Type == claim.Type && c.Value == claim.Value)
                     .Select(c => u)
                 ).ToList();
-
-            return Task.FromResult<IList<TUser>>(result);
+            return Task.FromResult(results);
         }
 
         public Task AddLoginAsync(TUser user, UserLoginInfo login, CancellationToken cancellationToken)
@@ -446,11 +422,11 @@ namespace AspNetCore.Identity.DocumentDb.Stores
                 throw new ArgumentNullException(nameof(loginProvider));
             }
 
-            TUser user = container.CreateDocumentQuery<TUser>(collectionUri)
+            TUser user = container.GetItemLinqQueryable<TUser>(allowSynchronousQueryExecution: true)
                 .SelectMany(u => u.Logins
                     .Where(l => l.LoginProvider == loginProvider && l.ProviderKey == providerKey)
                     .Select(l => u)
-                ).AsEnumerable().FirstOrDefault();
+                ).ToList().FirstOrDefault();
 
             return Task.FromResult(user);
         }
@@ -551,13 +527,13 @@ namespace AspNetCore.Identity.DocumentDb.Stores
                 throw new ArgumentNullException(nameof(normalizedRoleName));
             }
 
-            var result = container.CreateDocumentQuery<TUser>(collectionUri)
+            IList<TUser> result = container.GetItemLinqQueryable<TUser>(allowSynchronousQueryExecution: true)
                 .SelectMany(u => u.Roles
                     .Where(r => r.NormalizedName == normalizedRoleName)
                     .Select(r => u)
                 ).ToList();
 
-            return Task.FromResult<IList<TUser>>(result);
+            return Task.FromResult(result);
         }
 
         public Task SetPasswordHashAsync(TUser user, string passwordHash, CancellationToken cancellationToken)
@@ -570,12 +546,7 @@ namespace AspNetCore.Identity.DocumentDb.Stores
                 throw new ArgumentNullException(nameof(user));
             }
 
-            if (passwordHash == null)
-            {
-                throw new ArgumentNullException(nameof(passwordHash));
-            }
-
-            user.PasswordHash = passwordHash;
+            user.PasswordHash = passwordHash ?? throw new ArgumentNullException(nameof(passwordHash));
 
             return Task.CompletedTask;
         }
@@ -784,9 +755,9 @@ namespace AspNetCore.Identity.DocumentDb.Stores
                 throw new ArgumentNullException(nameof(normalizedEmail));
             }
 
-            TUser user = container.CreateDocumentQuery<TUser>(collectionUri)
+            TUser user = container.GetItemLinqQueryable<TUser>(allowSynchronousQueryExecution: true)
                 .Where(u => u.NormalizedEmail == normalizedEmail && u.DocumentType == typeof(TUser).Name)
-                .AsEnumerable()
+                .ToList()
                 .FirstOrDefault();
 
             return Task.FromResult(user);
@@ -919,7 +890,7 @@ namespace AspNetCore.Identity.DocumentDb.Stores
             return Task.CompletedTask;
         }
 
-#if NETSTANDARD2
+
         public Task SetAuthenticatorKeyAsync(TUser user, string key, CancellationToken cancellationToken)
         {
             cancellationToken.ThrowIfCancellationRequested();
@@ -995,9 +966,8 @@ namespace AspNetCore.Identity.DocumentDb.Stores
             var recoveryCodesCount = user.RecoveryCodes?.Count();
             return Task.FromResult(recoveryCodesCount ?? 0);
         }
-#endif
 
-#region IDisposable Support
+        #region IDisposable Support
 
         public void Dispose()
         {
@@ -1005,6 +975,6 @@ namespace AspNetCore.Identity.DocumentDb.Stores
             disposed = false;
         }
 
-#endregion
+        #endregion
     }
 }

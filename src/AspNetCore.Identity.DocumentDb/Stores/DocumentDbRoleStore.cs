@@ -8,6 +8,8 @@ using Microsoft.Extensions.Options;
 using System.Security.Claims;
 using System.Net;
 using AspNetCore.Identity.DocumentDb.Tools;
+using Microsoft.Azure.Cosmos;
+using Microsoft.Azure.Cosmos.Linq;
 
 namespace AspNetCore.Identity.DocumentDb.Stores
 {
@@ -98,7 +100,7 @@ namespace AspNetCore.Identity.DocumentDb.Stores
                 role.Id = Guid.NewGuid().ToString();
             }
 
-            ResourceResponse<Document> result = await container.CreateDocumentAsync(collectionUri, role);
+            ItemResponse<TRole> result = await container.CreateItemAsync(role);
 
             return result.StatusCode == HttpStatusCode.Created
                 ? IdentityResult.Success
@@ -117,16 +119,11 @@ namespace AspNetCore.Identity.DocumentDb.Stores
 
             try
             {
-                ResourceResponse<Document> result = await container.ReplaceDocumentAsync(GenerateDocumentUri(role.Id), document: role);
+                ItemResponse<TRole> result = await container.ReplaceItemAsync(role, role.Id);
             }
-            catch (DocumentClientException dce)
+            catch (CosmosException cex) when (cex.StatusCode == HttpStatusCode.NotFound)
             {
-                if (dce.StatusCode == HttpStatusCode.NotFound)
-                {
-                    return IdentityResult.Failed();
-                }
-
-                throw;
+                return IdentityResult.Failed();
             }
 
             return IdentityResult.Success;
@@ -137,7 +134,7 @@ namespace AspNetCore.Identity.DocumentDb.Stores
             cancellationToken.ThrowIfCancellationRequested();
             ThrowIfDisposed();
 
-            ResourceResponse<Document> result;
+            ItemResponse<TRole> result;
 
             if (role == null)
             {
@@ -146,16 +143,11 @@ namespace AspNetCore.Identity.DocumentDb.Stores
 
             try
             {
-                result = await container.DeleteDocumentAsync(GenerateDocumentUri(role.Id));
+                result = await container.DeleteItemAsync<TRole>(role.Id, PartitionKey.None);
             }
-            catch (DocumentClientException dce)
+            catch (CosmosException cex) when (cex.StatusCode == HttpStatusCode.NotFound)
             {
-                if (dce.StatusCode == HttpStatusCode.NotFound)
-                {
-                    return IdentityResult.Failed();
-                }
-
-                throw;
+                return IdentityResult.Failed();
             }
 
             return IdentityResult.Success;
@@ -197,12 +189,7 @@ namespace AspNetCore.Identity.DocumentDb.Stores
                 throw new ArgumentNullException(nameof(role));
             }
 
-            if (roleName == null)
-            {
-                throw new ArgumentNullException(nameof(roleName));
-            }
-
-            role.Name = roleName;
+            role.Name = roleName ?? throw new ArgumentNullException(nameof(roleName));
 
             return Task.CompletedTask;
         }
@@ -230,12 +217,7 @@ namespace AspNetCore.Identity.DocumentDb.Stores
                 throw new ArgumentNullException(nameof(role));
             }
 
-            if (normalizedName == null)
-            {
-                throw new ArgumentNullException(nameof(normalizedName));
-            }
-
-            role.NormalizedName = normalizedName;
+            role.NormalizedName = normalizedName ?? throw new ArgumentNullException(nameof(normalizedName));
 
             return Task.CompletedTask;
         }
@@ -250,7 +232,7 @@ namespace AspNetCore.Identity.DocumentDb.Stores
                 throw new ArgumentNullException(nameof(roleId));
             }
 
-            TRole role = await container.ReadDocumentAsync<TRole>(GenerateDocumentUri(roleId));
+            TRole role = await container.ReadItemAsync<TRole>(roleId, PartitionKey.None);
 
             return role;
         }
@@ -265,11 +247,10 @@ namespace AspNetCore.Identity.DocumentDb.Stores
                 throw new ArgumentNullException(nameof(normalizedRoleName));
             }
 
-            TRole role = container.CreateDocumentQuery<TRole>(collectionUri, new FeedOptions { EnableCrossPartitionQuery = true })
+            TRole role = container.GetItemLinqQueryable<TRole>(allowSynchronousQueryExecution: true)
                 .Where(r => r.NormalizedName == normalizedRoleName && r.DocumentType == typeof(TRole).Name)
-                .AsEnumerable()
+                .ToList()
                 .FirstOrDefault();
-
             return Task.FromResult(role);
         }
 
