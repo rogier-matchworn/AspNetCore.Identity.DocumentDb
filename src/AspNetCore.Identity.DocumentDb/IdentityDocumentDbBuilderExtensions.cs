@@ -1,7 +1,6 @@
 ﻿using AspNetCore.Identity.DocumentDb.Stores;
 using AspNetCore.Identity.DocumentDb.Tools;
 using Microsoft.AspNetCore.Identity;
-using Microsoft.Azure.Documents.Client;
 using Microsoft.Extensions.DependencyInjection;
 using Newtonsoft.Json;
 using System;
