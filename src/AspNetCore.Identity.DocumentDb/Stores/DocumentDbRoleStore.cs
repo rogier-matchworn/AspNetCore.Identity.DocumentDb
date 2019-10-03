@@ -232,9 +232,15 @@ namespace AspNetCore.Identity.DocumentDb.Stores
                 throw new ArgumentNullException(nameof(roleId));
             }
 
-            TRole role = await container.ReadItemAsync<TRole>(roleId, PartitionKey.None);
-
-            return role;
+            try
+            {
+                TRole role = await container.ReadItemAsync<TRole>(roleId, PartitionKey.None);
+                return role;
+            }
+            catch (CosmosException cex) when (cex.StatusCode == HttpStatusCode.NotFound)
+            {
+                return null;
+            }
         }
 
         public Task<TRole> FindByNameAsync(string normalizedRoleName, CancellationToken cancellationToken)

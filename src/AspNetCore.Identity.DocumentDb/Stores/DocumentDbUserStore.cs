@@ -123,9 +123,15 @@ namespace AspNetCore.Identity.DocumentDb.Stores
                 throw new ArgumentNullException(nameof(userId));
             }
 
-            TUser foundUser = await container.ReadItemAsync<TUser>(userId, PartitionKey.None);
-
-            return foundUser;
+            try
+            {
+                TUser user = await container.ReadItemAsync<TUser>(userId, PartitionKey.None);
+                return user;
+            }
+            catch (CosmosException cex) when (cex.StatusCode == HttpStatusCode.NotFound)
+            {
+                return null;
+            }
         }
 
         public Task<TUser> FindByNameAsync(string normalizedUserName, CancellationToken cancellationToken)
