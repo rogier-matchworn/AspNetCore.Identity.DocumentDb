@@ -9,6 +9,7 @@ using Newtonsoft.Json;
 
 namespace AspNetCore.Identity.DocumentDb
 {
+    [Obsolete]
     public static class DocumentClientExtensions
     {
         public static DocumentClient AddDefaultDocumentClientForIdentity(this IServiceCollection services, Uri serviceEndpoint, string authKeyOrResourceToken, JsonSerializerSettings serializerSettings = null, ConnectionPolicy connectionPolicy = null, ConsistencyLevel? consistencyLevel = null, Action<DocumentClient> afterCreation = null)

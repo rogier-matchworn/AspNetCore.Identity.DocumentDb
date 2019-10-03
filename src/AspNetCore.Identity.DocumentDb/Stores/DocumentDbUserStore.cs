@@ -86,7 +86,7 @@ namespace AspNetCore.Identity.DocumentDb.Stores
                 user.Id = Guid.NewGuid().ToString();
             }
 
-            ResourceResponse<Document> result = await documentClient.CreateDocumentAsync(collectionUri, user);
+            ResourceResponse<Document> result = await container.CreateDocumentAsync(collectionUri, user);
 
             return result.StatusCode == HttpStatusCode.Created
                 ? IdentityResult.Success
@@ -105,7 +105,7 @@ namespace AspNetCore.Identity.DocumentDb.Stores
 
             try
             {
-                await documentClient.DeleteDocumentAsync(GenerateDocumentUri(user.Id));
+                await container.DeleteDocumentAsync(GenerateDocumentUri(user.Id));
             }
             catch (DocumentClientException dce)
             {
@@ -130,7 +130,7 @@ namespace AspNetCore.Identity.DocumentDb.Stores
                 throw new ArgumentNullException(nameof(userId));
             }
 
-            TUser foundUser = await documentClient.ReadDocumentAsync<TUser>(GenerateDocumentUri(userId));
+            TUser foundUser = await container.ReadDocumentAsync<TUser>(GenerateDocumentUri(userId));
 
             return foundUser;
         }
@@ -145,7 +145,7 @@ namespace AspNetCore.Identity.DocumentDb.Stores
                 throw new ArgumentNullException(nameof(normalizedUserName));
             }
 
-            TUser foundUser = documentClient.CreateDocumentQuery<TUser>(collectionUri)
+            TUser foundUser = container.CreateDocumentQuery<TUser>(collectionUri, new FeedOptions { EnableCrossPartitionQuery = true })
                 .Where(u => u.NormalizedUserName == normalizedUserName && u.DocumentType == typeof(TUser).Name)
                 .AsEnumerable()
                 .FirstOrDefault();
@@ -244,7 +244,7 @@ namespace AspNetCore.Identity.DocumentDb.Stores
 
             try
             {
-                await documentClient.ReplaceDocumentAsync(GenerateDocumentUri(user.Id), document: user);
+                await container.ReplaceDocumentAsync(GenerateDocumentUri(user.Id), document: user);
             }
             catch (DocumentClientException dce)
             {
@@ -359,7 +359,7 @@ namespace AspNetCore.Identity.DocumentDb.Stores
                 throw new ArgumentNullException(nameof(claim));
             }
 
-            var result = documentClient.CreateDocumentQuery<TUser>(collectionUri)
+            var result = container.CreateDocumentQuery<TUser>(collectionUri)
                 .SelectMany(u => u.Claims
                     .Where(c => c.Type == claim.Type && c.Value == claim.Value)
                     .Select(c => u)
@@ -446,7 +446,7 @@ namespace AspNetCore.Identity.DocumentDb.Stores
                 throw new ArgumentNullException(nameof(loginProvider));
             }
 
-            TUser user = documentClient.CreateDocumentQuery<TUser>(collectionUri)
+            TUser user = container.CreateDocumentQuery<TUser>(collectionUri)
                 .SelectMany(u => u.Logins
                     .Where(l => l.LoginProvider == loginProvider && l.ProviderKey == providerKey)
                     .Select(l => u)
@@ -551,7 +551,7 @@ namespace AspNetCore.Identity.DocumentDb.Stores
                 throw new ArgumentNullException(nameof(normalizedRoleName));
             }
 
-            var result = documentClient.CreateDocumentQuery<TUser>(collectionUri)
+            var result = container.CreateDocumentQuery<TUser>(collectionUri)
                 .SelectMany(u => u.Roles
                     .Where(r => r.NormalizedName == normalizedRoleName)
                     .Select(r => u)
@@ -784,7 +784,7 @@ namespace AspNetCore.Identity.DocumentDb.Stores
                 throw new ArgumentNullException(nameof(normalizedEmail));
             }
 
-            TUser user = documentClient.CreateDocumentQuery<TUser>(collectionUri)
+            TUser user = container.CreateDocumentQuery<TUser>(collectionUri)
                 .Where(u => u.NormalizedEmail == normalizedEmail && u.DocumentType == typeof(TUser).Name)
                 .AsEnumerable()
                 .FirstOrDefault();

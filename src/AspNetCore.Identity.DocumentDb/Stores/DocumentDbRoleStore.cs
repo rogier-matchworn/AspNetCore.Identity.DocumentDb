@@ -4,9 +4,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using System.Threading;
-using Microsoft.Azure.Documents.Client;
 using Microsoft.Extensions.Options;
-using Microsoft.Azure.Documents;
 using System.Security.Claims;
 using System.Net;
 using AspNetCore.Identity.DocumentDb.Tools;
@@ -23,14 +21,12 @@ namespace AspNetCore.Identity.DocumentDb.Stores
         /// <summary>
         /// Initializes a new instance of the <see cref="DocumentDbRoleStore{TRole}"/>
         /// </summary>
-        /// <param name="documentClient">The DocumentDb client to be used</param>
+        /// <param name="clientAccessor">The DocumentDb client to be used</param>
         /// <param name="options">The configuraiton options for the <see cref="IDocumentClient"/></param>
-        public DocumentDbRoleStore(IDocumentClient documentClient, IOptions<DocumentDbOptions> options)
-            : base(documentClient, options, options.Value.RoleStoreDocumentCollection ?? options.Value.UserStoreDocumentCollection)
+        public DocumentDbRoleStore(ICosmosClientAccessor clientAccessor, IOptions<DocumentDbOptions> options)
+            : base(clientAccessor, options, options.Value.RoleStoreDocumentCollection ?? options.Value.UserStoreDocumentCollection)
         {
-            collectionUri = UriFactory.CreateDocumentCollectionUri(
-                this.options.Database, 
-                this.options.RoleStoreDocumentCollection ?? this.options.UserStoreDocumentCollection);
+
         }
 
         public Task<IList<Claim>> GetClaimsAsync(TRole role, CancellationToken cancellationToken = default(CancellationToken))
@@ -102,7 +98,7 @@ namespace AspNetCore.Identity.DocumentDb.Stores
                 role.Id = Guid.NewGuid().ToString();
             }
 
-            ResourceResponse<Document> result = await documentClient.CreateDocumentAsync(collectionUri, role);
+            ResourceResponse<Document> result = await container.CreateDocumentAsync(collectionUri, role);
 
             return result.StatusCode == HttpStatusCode.Created
                 ? IdentityResult.Success
@@ -121,7 +117,7 @@ namespace AspNetCore.Identity.DocumentDb.Stores
 
             try
             {
-                ResourceResponse<Document> result = await documentClient.ReplaceDocumentAsync(GenerateDocumentUri(role.Id), document: role);
+                ResourceResponse<Document> result = await container.ReplaceDocumentAsync(GenerateDocumentUri(role.Id), document: role);
             }
             catch (DocumentClientException dce)
             {
@@ -150,7 +146,7 @@ namespace AspNetCore.Identity.DocumentDb.Stores
 
             try
             {
-                result = await documentClient.DeleteDocumentAsync(GenerateDocumentUri(role.Id));
+                result = await container.DeleteDocumentAsync(GenerateDocumentUri(role.Id));
             }
             catch (DocumentClientException dce)
             {
@@ -254,7 +250,7 @@ namespace AspNetCore.Identity.DocumentDb.Stores
                 throw new ArgumentNullException(nameof(roleId));
             }
 
-            TRole role = await documentClient.ReadDocumentAsync<TRole>(GenerateDocumentUri(roleId));
+            TRole role = await container.ReadDocumentAsync<TRole>(GenerateDocumentUri(roleId));
 
             return role;
         }
@@ -269,7 +265,7 @@ namespace AspNetCore.Identity.DocumentDb.Stores
                 throw new ArgumentNullException(nameof(normalizedRoleName));
             }
 
-            TRole role = documentClient.CreateDocumentQuery<TRole>(collectionUri)
+            TRole role = container.CreateDocumentQuery<TRole>(collectionUri, new FeedOptions { EnableCrossPartitionQuery = true })
                 .Where(r => r.NormalizedName == normalizedRoleName && r.DocumentType == typeof(TRole).Name)
                 .AsEnumerable()
                 .FirstOrDefault();

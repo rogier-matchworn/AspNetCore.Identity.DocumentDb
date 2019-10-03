@@ -5,6 +5,7 @@ using Newtonsoft.Json;
 
 namespace AspNetCore.Identity.DocumentDb.Tools
 {
+    [Obsolete]
     internal static class DocumentClientFactory
     {
         internal static DocumentClient CreateClient(Uri serviceEndpoint, string authKeyOrResourceToken, JsonSerializerSettings serializerSettings = null, ConnectionPolicy connectionPolicy = null, ConsistencyLevel? consistencyLevel = null)

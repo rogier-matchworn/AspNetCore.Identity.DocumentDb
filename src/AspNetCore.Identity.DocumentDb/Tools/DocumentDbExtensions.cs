@@ -13,6 +13,7 @@ namespace AspNetCore.Identity.DocumentDb.Tools
     /// <summary>
     /// Various extension methods to be used with DocumentDb SDK
     /// </summary>
+    [Obsolete]
     internal static class DocumentDbExtensions
     {
         /// <summary>
