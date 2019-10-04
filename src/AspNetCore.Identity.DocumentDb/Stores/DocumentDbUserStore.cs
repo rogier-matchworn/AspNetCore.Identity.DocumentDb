@@ -50,7 +50,8 @@ namespace AspNetCore.Identity.DocumentDb.Stores
         IUserEmailStore<TUser>,
         IUserAuthenticatorKeyStore<TUser>,
         IUserTwoFactorRecoveryCodeStore<TUser>,
-        IUserLockoutStore<TUser>
+        IUserLockoutStore<TUser>,
+        IQueryableUserStore<TUser>
         where TUser : DocumentDbIdentityUser<TRole>
         where TRole : DocumentDbIdentityRole
     {
@@ -67,6 +68,8 @@ namespace AspNetCore.Identity.DocumentDb.Stores
         {
             this.roleStore = roleStore;
         }
+
+        public IQueryable<TUser> Users => container.GetItemLinqQueryable<TUser>(allowSynchronousQueryExecution: true);
 
         public async Task<IdentityResult> CreateAsync(TUser user, CancellationToken cancellationToken)
         {
