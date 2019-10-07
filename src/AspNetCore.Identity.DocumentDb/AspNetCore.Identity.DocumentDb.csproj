@@ -1,23 +1,22 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
+    <TargetFrameworks>netstandard2.0</TargetFrameworks>
+    <Version>2.0.0</Version>
     <Description>A Cosmos DB / DocumentDB Storage Provider for ASP.NET Core Identity</Description>
-    <Copyright>2016-2017 Bernhard Koenig</Copyright>
-    <AssemblyTitle>CodeKoenig.AspNetCore.Identity.DocumentDb</AssemblyTitle>
-    <VersionPrefix>2.0.0</VersionPrefix>
-    <Authors>Bernhard Koenig</Authors>
-    <TargetFrameworks>netstandard2.0;</TargetFrameworks>
-    <AssemblyName>f14shm4n.AspNetCore.Identity.CosmosDb</AssemblyName>
-    <PackageId>f14shm4n.AspNetCore.Identity.CosmosDb</PackageId>
-    <PackageTags>DocumentDB;Cosmos DB;CosmosDB;AspNetCore;AspNet;Membership;Identity;Core;AspNetCore.Identity.DocumentDb</PackageTags>
+    <Copyright>2016-2017 Bernhard Koenig, 2019 f14shm4n</Copyright>
+    <AssemblyTitle>f14shm4n.AspNetCore.Identity.DocumentDb</AssemblyTitle>
+    <AssemblyName>f14shm4n.AspNetCore.Identity.DocumentDb</AssemblyName>
+    <PackageId>f14shm4n.AspNetCore.Identity.DocumentDb</PackageId>
+    <Authors>Bernhard Koenig, f14shm4n</Authors>
+    <PackageTags>DocumentDB;Cosmos DB;CosmosDB;AspNetCore;Membership;Identity;Core;AspNetCore.Identity.DocumentDb</PackageTags>
     <PackageReleaseNotes>
-      Now supports .NET Core 2.0 and NETStandard 2.0 two factor authentication. Thanks to @louislewis2 and @Carl-Hugo for their contributions.
+      Supports NETStandard 2.0. Based on Azure Cosmos Db SDK v3.
     </PackageReleaseNotes>
-    <PackageProjectUrl>https://github.com/codekoenig/AspNetCore.Identity.DocumentDb</PackageProjectUrl>
-    <PackageLicenseUrl>https://opensource.org/licenses/MIT</PackageLicenseUrl>
-    <PackageIconUrl>https://github.com/codekoenig/AspNetCore.Identity.DocumentDb/raw/master/Assets/CoreDocDbIdentityIcon256.png</PackageIconUrl>
-    <RepositoryType>git</RepositoryType>
-    <RepositoryUrl>https://github.com/codekoenig/AspNetCore.Identity.DocumentDb</RepositoryUrl>
+    <PackageProjectUrl>https://github.com/f14shm4n/AspNetCore.Identity.DocumentDb</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/f14shm4n/AspNetCore.Identity.DocumentDb</RepositoryUrl>
+    <PackageIconUrl>https://github.com/f14shm4n/AspNetCore.Identity.DocumentDb/raw/master/Assets/CoreDocDbIdentityIcon256.png</PackageIconUrl>
+    <RepositoryType>git</RepositoryType>    
     <GenerateAssemblyConfigurationAttribute>false</GenerateAssemblyConfigurationAttribute>
     <GenerateAssemblyCompanyAttribute>false</GenerateAssemblyCompanyAttribute>
     <GenerateAssemblyProductAttribute>false</GenerateAssemblyProductAttribute>
@@ -26,5 +25,13 @@
   <ItemGroup Condition="'$(TargetFramework)' == 'netstandard2.0'">
     <PackageReference Include="Microsoft.Azure.Cosmos" Version="3.1.1" />    
     <PackageReference Include="Microsoft.AspNetCore.Identity" Version="2.2.0" />
+  </ItemGroup>
+
+  <PropertyGroup>
+    <PackageLicenseFile>LICENSE.txt</PackageLicenseFile>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <None Include="licenses\LICENSE.txt" Pack="true" PackagePath="" />
   </ItemGroup>
 </Project>
