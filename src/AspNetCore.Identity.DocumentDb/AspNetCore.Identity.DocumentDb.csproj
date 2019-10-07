@@ -2,17 +2,15 @@
 
   <PropertyGroup>
     <TargetFrameworks>netstandard2.0</TargetFrameworks>
-    <Version>2.0.0</Version>
-    <Description>A Cosmos DB / DocumentDB Storage Provider for ASP.NET Core Identity</Description>
+    <Version>3.0.0</Version>
+    <Description>A Cosmos DB / DocumentDB Storage Provider for ASP.NET Core Identity.</Description>
     <Copyright>2016-2017 Bernhard Koenig, 2019 f14shm4n</Copyright>
     <AssemblyTitle>f14shm4n.AspNetCore.Identity.DocumentDb</AssemblyTitle>
     <AssemblyName>f14shm4n.AspNetCore.Identity.DocumentDb</AssemblyName>
     <PackageId>f14shm4n.AspNetCore.Identity.DocumentDb</PackageId>
     <Authors>Bernhard Koenig, f14shm4n</Authors>
     <PackageTags>DocumentDB;Cosmos DB;CosmosDB;AspNetCore;Membership;Identity;Core;AspNetCore.Identity.DocumentDb</PackageTags>
-    <PackageReleaseNotes>
-      Supports NETStandard 2.0. Based on Azure Cosmos Db SDK v3.
-    </PackageReleaseNotes>
+    <PackageReleaseNotes>Supports NETStandard 2.0. Based on Azure Cosmos Db SDK v3.</PackageReleaseNotes>
     <PackageProjectUrl>https://github.com/f14shm4n/AspNetCore.Identity.DocumentDb</PackageProjectUrl>
     <RepositoryUrl>https://github.com/f14shm4n/AspNetCore.Identity.DocumentDb</RepositoryUrl>
     <PackageIconUrl>https://github.com/f14shm4n/AspNetCore.Identity.DocumentDb/raw/master/Assets/CoreDocDbIdentityIcon256.png</PackageIconUrl>
@@ -29,6 +27,7 @@
 
   <PropertyGroup>
     <PackageLicenseFile>LICENSE.txt</PackageLicenseFile>
+    <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
   </PropertyGroup>
 
   <ItemGroup>
