@@ -1,21 +1,21 @@
 # AspNetCore.Identity.DocumentDb
 
-AspNetCore.Identity.DocumentDb is a storage provider for ASP.NET Core Identity that allows you to use Azure DocumentDB
+**NOTE: This library uses [Azure Cosmos SDK v3](https://github.com/Azure/azure-cosmos-dotnet-v3). The SDK v2 is not supported anymore.**
+
+AspNetCore.Identity.DocumentDb is a storage provider for ASP.NET Core Identity that allows you to use Azure Cosmos DB
 as it's data store instead of the default SQL Server store. It supports all features of Identity, including **full role
 support** and **external authentication services**.
 
 ## Framework support
 
-* .NET Standard 1.6
 * .NET Standard 2.0
-* .NET Framework 4.6+
 
 ## Add AspNetCore.Identity.DocumentDb to your project with NuGet
 
 Run the following command in Package Manager Console:
 
 ```shell
-Install-Package CodeKoenig.AspNetCore.Identity.DocumentDb
+Install-Package f14shm4n.AspNetCore.Identity.DocumentDb -Version 3.0.0
 ```
 
 ## Supported Identity features
@@ -39,8 +39,8 @@ Install-Package CodeKoenig.AspNetCore.Identity.DocumentDb
 
 AspNetCore.Identity.DocumentDb works just like the default SQL Server storage provider:
 
-* When registering services in `ConfigureServices()` in `startup.cs`, you first need to register your `IDocumentClient`
-  instance that also AspNetCore.Identity.DocumentDb will resolve to access your DocumentDb database.
+* When registering services in `ConfigureServices()` in `startup.cs`, you first need to register your `ICosmosClientAccessor` implementation.
+  
 * Next, register ASP.NET Identity by calling `services.AddIdentity<DocumentDbIdentityUser, DocumentDbIdentityRole>()`
   as you would with the SQL Server provider, just make sure you specify `DocumentDbIdentityUser` and `DocumentDbIdentityRole`
   as the generic type parameters to use with AspNetIdentity.
@@ -49,10 +49,52 @@ AspNetCore.Identity.DocumentDb works just like the default SQL Server storage pr
   and document collection AspNetCore.Identity.DocumentDb should use to store data.
 
 ```CSharp
+
+// ICosmosClientAccess implementation
+public class CosmosClientAccessor : ICosmosClientAccessor, IDisposable
+{
+    private bool _disposed = false;
+
+    public CosmosClientAccessor(CosmosClient client)
+    {
+        Client = client;
+    }
+
+    public CosmosClient Client { get; }
+
+    public void Dispose()
+    {
+        if (!_disposed)
+        {
+            Client.Dispose();
+            _disposed = true;
+        }
+    }
+}
+
 public void ConfigureServices(IServiceCollection services)
 {
-    // Add DocumentDb client singleton instance (it's recommended to use a singleton instance for it)
-    services.AddSingleton<IDocumentClient>(new DocumentClient("https://localhost:8081/", "YourAuthorizationKey");
+    var builder = new CosmosClientBuilder("<your_service_end_point>", "your_auth_key");
+    var client = builder
+        // The CosmosJsonSerializer class is a part of Azure Cosmos SDK V3,
+        // but for some genius reason this class is internal,
+        // so, you may write your own json serializer or you can just copy the CosmosJsonSerializer
+        // into your project and then use it like this. 
+        // This is a link to CosmosJsonSerializer - https://github.com/Azure/azure-cosmos-dotnet-v3/blob/0843cae3c252dd49aa8e392623d7eaaed7eb712b/Microsoft.Azure.Cosmos/src/Serializer/CosmosJsonSerializerWrapper.cs
+        // Anyway you must to do it, since the json serializer require a
+        // json converters which you can see below.
+        .WithCustomSerializer(new CosmosJsonSerializer(new JsonSerializerSettings
+        {
+            NullValueHandling = NullValueHandling.Include,
+            DefaultValueHandling = DefaultValueHandling.Include,
+            ContractResolver = new CamelCasePropertyNamesContractResolver(),
+            // This converters is critical part, if you do not add them
+            // the Identity provider will not work.
+            Converters = new List<JsonConverter>() { new JsonClaimConverter(), new JsonClaimsPrincipalConverter(), new JsonClaimsIdentityConverter() }
+        }))
+        .Build();
+    var accessor = new CosmosClientAccessor(client);
+    services.AddSingleton<AspNetCore.Identity.DocumentDb.ICosmosClientAccessor>(accessor);
 
     // Add framework services.
     services.AddIdentity<DocumentDbIdentityUser, DocumentDbIdentityRole>()
@@ -149,6 +191,8 @@ role document before you store it for the first time, AspNetCore.Identity.Docume
 GUID for the ID automatically, though.
 
 ## Tests
+
+**IMPORTANT: Test not updated for Azure Cosmos SDK v3**
 
 This project utilizes a mix of unit and integration tests implemented in xUnit. Integration tests need
 a running test instance of DocumentDb to create a temporary test database - it is recommended to use the local
