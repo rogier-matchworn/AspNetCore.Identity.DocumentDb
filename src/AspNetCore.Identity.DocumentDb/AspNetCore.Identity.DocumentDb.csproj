@@ -13,7 +13,7 @@
     <PackageReleaseNotes>Supports NETStandard 2.0. Based on Azure Cosmos Db SDK v3.</PackageReleaseNotes>
     <PackageProjectUrl>https://github.com/f14shm4n/AspNetCore.Identity.DocumentDb</PackageProjectUrl>
     <RepositoryUrl>https://github.com/f14shm4n/AspNetCore.Identity.DocumentDb</RepositoryUrl>
-    <PackageIconUrl>https://github.com/f14shm4n/AspNetCore.Identity.DocumentDb/raw/master/Assets/CoreDocDbIdentityIcon256.png</PackageIconUrl>
+    <PackageIcon>CoreDocDbIdentityIcon64.png</PackageIcon>
     <RepositoryType>git</RepositoryType>    
     <GenerateAssemblyConfigurationAttribute>false</GenerateAssemblyConfigurationAttribute>
     <GenerateAssemblyCompanyAttribute>false</GenerateAssemblyCompanyAttribute>
@@ -32,5 +32,6 @@
 
   <ItemGroup>
     <None Include="licenses\LICENSE.txt" Pack="true" PackagePath="" />
+    <None Include="images\CoreDocDbIdentityIcon64.png" Pack="true" PackagePath="" />
   </ItemGroup>
 </Project>
