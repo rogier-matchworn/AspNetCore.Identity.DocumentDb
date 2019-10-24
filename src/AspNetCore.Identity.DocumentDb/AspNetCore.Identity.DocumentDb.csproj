@@ -2,7 +2,7 @@
 
   <PropertyGroup>
     <TargetFrameworks>netstandard2.0</TargetFrameworks>
-    <Version>3.0.0</Version>
+    <Version>3.0.1</Version>
     <Description>A Cosmos DB / DocumentDB Storage Provider for ASP.NET Core Identity.</Description>
     <Copyright>2016-2017 Bernhard Koenig, 2019 f14shm4n</Copyright>
     <AssemblyTitle>f14shm4n.AspNetCore.Identity.DocumentDb</AssemblyTitle>
@@ -33,5 +33,9 @@
   <ItemGroup>
     <None Include="licenses\LICENSE.txt" Pack="true" PackagePath="" />
     <None Include="images\CoreDocDbIdentityIcon64.png" Pack="true" PackagePath="" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="f14.Microsoft.Azure.Cosmos" Version="1.0.1" />
   </ItemGroup>
 </Project>
