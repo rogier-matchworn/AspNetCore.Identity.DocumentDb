@@ -21,8 +21,7 @@
   </PropertyGroup>
 
   <ItemGroup Condition="'$(TargetFramework)' == 'netstandard2.0'">
-    <PackageReference Include="Microsoft.Azure.Cosmos" Version="3.1.1" />    
-    <PackageReference Include="Microsoft.AspNetCore.Identity" Version="2.2.0" />
+    <PackageReference Include="Microsoft.Azure.Cosmos" Version="3.17.0" />
   </ItemGroup>
 
   <PropertyGroup>
@@ -37,5 +36,6 @@
 
   <ItemGroup>
     <PackageReference Include="f14.Microsoft.Azure.Cosmos" Version="1.0.1" />
+    <PackageReference Include="Microsoft.Extensions.Identity.Core" Version="5.0.4" />
   </ItemGroup>
 </Project>

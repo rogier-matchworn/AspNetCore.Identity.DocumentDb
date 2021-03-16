@@ -12,5 +12,9 @@ namespace AspNetCore.Identity.DocumentDb
         {
             return key.Normalize().ToLowerInvariant();
         }
+
+        public string NormalizeName(string name) => Normalize(name);
+
+        public string NormalizeEmail(string email) => Normalize(email);
     }
 }
